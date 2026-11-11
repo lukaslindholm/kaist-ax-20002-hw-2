@@ -15,7 +15,7 @@ DATA = Path("data")
 N_CLASSES = 6
 BATCH_SIZE = 32
 # Vi kör 8 epoker eftersom vi vet att modellen började överanpassa runt epok 7-8 tidigare
-EPOCHS = 11
+EPOCHS = 16
 LEARNING_RATE = 0.0001
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -77,8 +77,8 @@ def create_submission():
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    print("Initializing ResNet18...")
-    model = models.resnet18(weights="DEFAULT")
+    print("Initializing ResNet34...")
+    model = models.resnet34(weights="DEFAULT")
     model.fc = nn.Linear(model.fc.in_features, N_CLASSES)
     model = model.to(DEVICE)
 
@@ -116,11 +116,11 @@ def create_submission():
         "id": test_df.image_id, 
         "label": predictions
     })
-    sub.to_csv("submission_resnet18_0.0001.csv", index=False)
+    sub.to_csv("submission_resnet34_0.0001.csv", index=False)
     
     # Skriv ut fördelningen så vi ser vad modellen gissade
     pred_counts = np.bincount(predictions, minlength=N_CLASSES)
-    print("\nSaved submission_resnet18_0.0001.csv!")
+    print("\nSaved submission_resnet34_0.0001.csv!")
     print("Predicted class counts:", pred_counts)
 
 if __name__ == "__main__":

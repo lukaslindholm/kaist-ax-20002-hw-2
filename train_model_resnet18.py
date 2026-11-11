@@ -15,7 +15,7 @@ from PIL import Image
 DATA = Path("data")
 N_CLASSES = 6
 BATCH_SIZE = 32
-EPOCHS = 15
+EPOCHS = 16
 LEARNING_RATE = 0.0001
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -99,7 +99,7 @@ def get_data_loaders():
 def get_model():
     # Load pre-trained ResNet18
     # Use weights="DEFAULT" instead of pretrained=True for modern torchvision
-    model = models.resnet18(weights="DEFAULT") 
+    model = models.resnet34(weights="DEFAULT") 
     
     # Modify the final Fully Connected (FC) layer for 6 classes instead of 1000
     num_ftrs = model.fc.in_features
