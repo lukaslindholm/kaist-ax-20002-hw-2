@@ -17,7 +17,7 @@ N_CLASSES = 6
 BATCH_SIZE = 32
 # Vi delar upp träningen i två faser
 EPOCHS_FROZEN = 3   # Fas 1: Bara sista lagret tränas
-EPOCHS_UNFROZEN = 20 # Fas 2: Hela modellen tränas
+EPOCHS_UNFROZEN = 30 # Fas 2: Hela modellen tränas
 LEARNING_RATE = 0.0005 # Lite högre för fas 1
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

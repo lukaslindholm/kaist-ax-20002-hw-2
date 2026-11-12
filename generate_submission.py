@@ -14,9 +14,8 @@ from PIL import Image
 DATA = Path("data")
 N_CLASSES = 6
 BATCH_SIZE = 32
-# Vi kör 8 epoker eftersom vi vet att modellen började överanpassa runt epok 7-8 tidigare
 EPOCHS = 16
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.0005
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Using device: {DEVICE}")
@@ -44,9 +43,8 @@ class SteelDefectDataset(Dataset):
             label = torch.tensor(self.labels[idx], dtype=torch.long)
             return img_tensor, label
         else:
-            return img_tensor # For test data (no labels)
+            return img_tensor 
 
-# Samma data augmentation som tidigare för att hantera Covariate Shift
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomVerticalFlip(p=0.5),
@@ -70,7 +68,6 @@ def create_submission():
     y_train_all = train_df['label'].values
     X_test = z["X_test"]
 
-    # Vi tränar på ALLA data (Steg 1, 2 och 3)
     train_dataset = SteelDefectDataset(X_train_all, y_train_all, transform=train_transform)
     test_dataset = SteelDefectDataset(X_test, transform=test_transform)
 
@@ -83,6 +80,7 @@ def create_submission():
     model = model.to(DEVICE)
 
     criterion = nn.CrossEntropyLoss()
+    # Vanlig Adam här, precis som du föreslog
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     print("Training on Stages 1-3 combined...")
@@ -100,6 +98,10 @@ def create_submission():
         
         print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {running_loss/len(train_dataset):.4f}")
 
+    # --- HÄR SPARAR VI MODELLEN INNAN PREDICTIONS ---
+    torch.save(model.state_dict(), 'best_model_all_data.pth')
+    print("\n-> Model saved to 'best_model_all_data.pth'")
+
     print("\nGenerating predictions for Stages 4 & 5...")
     model.eval()
     predictions = []
@@ -111,16 +113,14 @@ def create_submission():
             _, predicted = torch.max(outputs, 1)
             predictions.extend(predicted.cpu().numpy())
 
-    # Skapa Kaggle-filen
     sub = pd.DataFrame({
         "id": test_df.image_id, 
         "label": predictions
     })
-    sub.to_csv("submission_resnet34_0.0001.csv", index=False)
+    sub.to_csv("submission_resnet34_0.0005.csv", index=False)
     
-    # Skriv ut fördelningen så vi ser vad modellen gissade
     pred_counts = np.bincount(predictions, minlength=N_CLASSES)
-    print("\nSaved submission_resnet34_0.0001.csv!")
+    print("\nSaved submission_resnet34_0.0005.csv!")
     print("Predicted class counts:", pred_counts)
 
 if __name__ == "__main__":

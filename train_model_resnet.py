@@ -16,7 +16,7 @@ DATA = Path("data")
 N_CLASSES = 6
 BATCH_SIZE = 32
 EPOCHS = 16
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.0005
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Using device: {DEVICE}")
@@ -114,7 +114,7 @@ def train_model():
     
     criterion = nn.CrossEntropyLoss()
     # We fine-tune the whole model, but we could choose to freeze early layers later
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     print("\nStarting Training...")
     best_val_acc = 0.0
