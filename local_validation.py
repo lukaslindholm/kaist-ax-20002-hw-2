@@ -10,13 +10,26 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
+import random
+
+# Fix random seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 # 1. Configuration
-DATA = Path("data")
+# Read data from the current working directory
+DATA = Path(".")
 N_CLASSES = 6
 BATCH_SIZE = 32
 EPOCHS = 16
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0001
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Using device: {DEVICE}")
@@ -54,14 +67,12 @@ class SteelDefectDataset(Dataset):
         return img_tensor, label
 
 # 3. Data Augmentation (Tackling Covariate Shift)
-# Training transform includes augmentation
+# Training transform includes random augmentation
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomVerticalFlip(p=0.5),
-    # Randomly change brightness and contrast to simulate future stages
     transforms.ColorJitter(brightness=0.3, contrast=0.3),
     transforms.ToTensor(),
-    # Standard ImageNet normalization
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) 
 ])
 
@@ -72,10 +83,10 @@ val_transform = transforms.Compose([
 ])
 
 def get_data_loaders():
-    print("Loading data...")
+    print("Loading data for local validation...")
     train_df = pd.read_csv(DATA / "train.csv")
     z = np.load(DATA / "images.npz", allow_pickle=True)
-    Xtr = z["X_train"] # Shape: (1079, 64, 64)
+    Xtr = z["X_train"] 
 
     labels = train_df['label'].values
     stages = train_df['stage'].values
@@ -95,10 +106,8 @@ def get_data_loaders():
 
     return train_loader, val_loader
 
-# 4. Model Definition (Pre-trained ResNet18)
+# 4. Model Definition (ResNet34)
 def get_model():
-    # Load pre-trained ResNet18
-    # Use weights="DEFAULT" instead of pretrained=True for modern torchvision
     model = models.resnet34(weights="DEFAULT") 
     
     # Modify the final Fully Connected (FC) layer for 6 classes instead of 1000
@@ -113,10 +122,9 @@ def train_model():
     model = get_model()
     
     criterion = nn.CrossEntropyLoss()
-    # We fine-tune the whole model, but we could choose to freeze early layers later
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    print("\nStarting Training...")
+    print("\nStarting Training (Validation Strategy: Train on Stage 1-2, Test on Stage 3)...")
     best_val_acc = 0.0
 
     for epoch in range(EPOCHS):

@@ -10,12 +10,25 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
+import random
 
-DATA = Path("data")
+# Fix random seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# Read data from the current working directory
+DATA = Path(".")
 N_CLASSES = 6
 BATCH_SIZE = 32
 EPOCHS = 16
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0001
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Using device: {DEVICE}")
@@ -80,7 +93,7 @@ def create_submission():
     model = model.to(DEVICE)
 
     criterion = nn.CrossEntropyLoss()
-    # Vanlig Adam här, precis som du föreslog
+    # Standard Adam optimizer without aggressive weight decay
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     print("Training on Stages 1-3 combined...")
@@ -98,7 +111,7 @@ def create_submission():
         
         print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {running_loss/len(train_dataset):.4f}")
 
-    # --- HÄR SPARAR VI MODELLEN INNAN PREDICTIONS ---
+    # Save the model weights before generating predictions
     torch.save(model.state_dict(), 'best_model_all_data.pth')
     print("\n-> Model saved to 'best_model_all_data.pth'")
 
@@ -117,10 +130,10 @@ def create_submission():
         "id": test_df.image_id, 
         "label": predictions
     })
-    sub.to_csv("submission_resnet34_0.0005.csv", index=False)
+    sub.to_csv("submission.csv", index=False)
     
     pred_counts = np.bincount(predictions, minlength=N_CLASSES)
-    print("\nSaved submission_resnet34_0.0005.csv!")
+    print("\nSaved submission.csv!")
     print("Predicted class counts:", pred_counts)
 
 if __name__ == "__main__":

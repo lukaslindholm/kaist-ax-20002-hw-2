@@ -5,17 +5,26 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+import random
+import torch
 
-# Set up paths
-DATA = Path("data")
+# Fix random seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# Read data from the current working directory
+DATA = Path(".")
 
 def run_diagnostics():
     print("Loading data for diagnostics...")
     
-    if not DATA.exists():
-        print(f"Error: Could not find the directory '{DATA}'.")
-        return
-
     train_df = pd.read_csv(DATA / "train.csv")
     test_df = pd.read_csv(DATA / "test.csv")
     
@@ -63,9 +72,9 @@ def run_diagnostics():
                     fontweight='bold')
 
     plt.tight_layout()
-    plt.savefig('label_shift.png')
+    plt.savefig('label_shift.pdf')
     plt.close()
-    print("Saved annotated 'label_shift.png' to current directory.")
+    print("Saved annotated 'label_shift.pdf' to current directory.")
 
     # ---------------------------------------------------------
     # 2. Analyze Covariate Shift (Image statistics across stages 1-5)
@@ -111,10 +120,10 @@ def run_diagnostics():
     ax1.legend(lines, labels, loc='upper right')
     
     plt.tight_layout()
-    plt.savefig('covariate_shift.png')
+    plt.savefig('covariate_shift.pdf')
     plt.close()
-    print("Saved 'covariate_shift.png' to current directory.")
-    print("\nDiagnostics complete! Check your PNG files.")
+    print("Saved 'covariate_shift.pdf' to current directory.")
+    print("\nDiagnostics complete! Check your PDF files.")
 
 if __name__ == "__main__":
     run_diagnostics()

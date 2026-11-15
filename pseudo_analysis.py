@@ -9,15 +9,28 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 from PIL import Image
+import random
 
-# --- INSTÄLLNINGAR ---
-DATA = Path("data")
+# Fix random seeds for reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(SEED)
+    torch.cuda.manual_seed_all(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# --- SETTINGS ---
+# Read data from the current working directory
+DATA = Path(".")
 N_CLASSES = 6
 BATCH_SIZE = 32
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# VÄLJ DIN BÄSTA MODELL (Den som ska analysera testdatan)
-MODEL_PATH = "best_model_all_data.pth" # Byt till namnet på den modell som fick 0.875
+# SELECT YOUR BEST MODEL (The one used to analyze the test data)
+MODEL_PATH = "best_model_all_data.pth" 
 
 class SteelDefectDataset(Dataset):
     def __init__(self, images, transform=None):
@@ -43,12 +56,12 @@ test_transform = transforms.Compose([
 ])
 
 def run_pseudo_analysis():
-    print(f"Laddar testdata från Steg 4 och 5...")
+    print(f"Loading test data from Stages 4 and 5...")
     z = np.load(DATA / "images.npz", allow_pickle=True)
     X_test = z["X_test"]
 
-    # Vi vet från uppgiftsbeskrivningen att varje steg har ca 360 bilder.
-    # test.csv har 720 bilder. Alltså är de första 360 = Steg 4, och de sista 360 = Steg 5.
+    # We know from the data description that each stage has approx 360 images.
+    # test.csv has 720 images. Thus, the first 360 = Stage 4, and the last 360 = Stage 5.
     X_stage_4 = X_test[:360]
     X_stage_5 = X_test[360:]
 
@@ -58,8 +71,8 @@ def run_pseudo_analysis():
     loader_s4 = DataLoader(dataset_s4, batch_size=BATCH_SIZE, shuffle=False)
     loader_s5 = DataLoader(dataset_s5, batch_size=BATCH_SIZE, shuffle=False)
 
-    print(f"Laddar modellvikter från {MODEL_PATH}...")
-    model = models.resnet34() # SE TILL ATT DETTA MATCHAR DIN SPARADE MODELL (resnet18 eller 34)
+    print(f"Loading model weights from {MODEL_PATH}...")
+    model = models.resnet34() # ENSURE THIS MATCHES YOUR SAVED MODEL ARCHITECTURE
     model.fc = nn.Linear(model.fc.in_features, N_CLASSES)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
     model = model.to(DEVICE)
@@ -75,19 +88,19 @@ def run_pseudo_analysis():
                 preds.extend(predicted.cpu().numpy())
         return np.array(preds)
 
-    print("\nAnalyserar Steg 4...")
+    print("\nAnalyzing Stage 4...")
     preds_s4 = get_predictions(loader_s4)
     counts_s4 = np.bincount(preds_s4, minlength=N_CLASSES)
     dist_s4 = (counts_s4 / len(preds_s4)) * 100
-    print(f"Gissningar i antal: {counts_s4}")
-    print(f"Procentuell fördelning: {np.round(dist_s4, 1)}%")
+    print(f"Prediction counts: {counts_s4}")
+    print(f"Percentage distribution: {np.round(dist_s4, 1)}%")
 
-    print("\nAnalyserar Steg 5...")
+    print("\nAnalyzing Stage 5...")
     preds_s5 = get_predictions(loader_s5)
     counts_s5 = np.bincount(preds_s5, minlength=N_CLASSES)
     dist_s5 = (counts_s5 / len(preds_s5)) * 100
-    print(f"Gissningar i antal: {counts_s5}")
-    print(f"Procentuell fördelning: {np.round(dist_s5, 1)}%")
+    print(f"Prediction counts: {counts_s5}")
+    print(f"Percentage distribution: {np.round(dist_s5, 1)}%")
 
 if __name__ == "__main__":
     run_pseudo_analysis()
